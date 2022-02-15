@@ -1,7 +1,9 @@
-import customtag.User;
+import cn.joss.test.annotation.DemoService;
+import cn.joss.test.annotation.TestConfig;
+import cn.joss.test.xml.TestBean;
 import org.springframework.beans.factory.xml.XmlBeanFactory;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.core.io.ClassPathResource;
-import test.TestBean;
 
 /**
  * Created by sadwx on 17/4/19.
@@ -9,12 +11,21 @@ import test.TestBean;
 public class BeanFactoryTest {
 
 	public static void main(String[] args) {
+//		annotationConfig();
+		xmlFactory();
+//
+    }
 
-        XmlBeanFactory beanFactory = new XmlBeanFactory(new ClassPathResource("applicationContext.xml"));
-//        User user = (User) beanFactory.getBean("user");
-//        System.out.println(user.getName()+user.getEmail());
+    public static void annotationConfig(){
+		AnnotationConfigApplicationContext applicationContext = new AnnotationConfigApplicationContext(TestConfig.class);
+		DemoService demoService = applicationContext.getBean(DemoService.class);
+		System.out.println(demoService);
+	}
+
+	public static void xmlFactory(){
+		XmlBeanFactory beanFactory = new XmlBeanFactory(new ClassPathResource("applicationContext.xml"));
 
         TestBean testBean = beanFactory.getBean(TestBean.class);
         System.out.println(testBean.getName());
-    }
+	}
 }

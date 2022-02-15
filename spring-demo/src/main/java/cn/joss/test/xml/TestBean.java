@@ -1,4 +1,4 @@
-package test;
+package cn.joss.test.xml;
 
 /**
  * Created by sadwx on 17/4/19.
