@@ -90,6 +90,8 @@ import org.springframework.util.StringUtils;
  * @see DefaultAdvisorAutoProxyCreator
  */
 @SuppressWarnings("serial")
+//TODO 循环依赖： 实现了SmartInstantiationAwareBeanPostProcessor 所以有方法getEarlyBeanReference来只能的解决循环引用问题：提前把代理对象暴露出去~
+// 自动代理创建器它保证了代理对象(只会被创建一次)，而且支持循环依赖的自动注入的依旧是代理对象。
 public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
 		implements SmartInstantiationAwareBeanPostProcessor, BeanFactoryAware {
 
@@ -233,12 +235,18 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
 		return null;
 	}
 
+
+	/*
+	 * TODO 循环依赖：提前暴露代理对象的引用  它肯定在postProcessAfterInitialization之前执行
+	 *  所以它并不需要判断啥的~~~~  创建好后放进缓存earlyProxyReferences里  注意此处value是原始Bean
+	 */
 	@Override
 	public Object getEarlyBeanReference(Object bean, String beanName) {
 		Object cacheKey = getCacheKey(bean.getClass(), beanName);
 		this.earlyProxyReferences.put(cacheKey, bean);
 		return wrapIfNecessary(bean, beanName, cacheKey);
 	}
+
 
 	@Override
 	public Object postProcessBeforeInstantiation(Class<?> beanClass, String beanName) {
@@ -291,10 +299,20 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
 	 * identified as one to proxy by the subclass.
 	 * @see #getAdvicesAndAdvisorsForBean
 	 */
+	// TODO 循环依赖：因为它会在getEarlyBeanReference之后执行，所以此处的重要逻辑是下面的判断
 	@Override
 	public Object postProcessAfterInitialization(@Nullable Object bean, String beanName) {
 		if (bean != null) {
 			Object cacheKey = getCacheKey(bean.getClass(), beanName);
+			/**
+			 * TODO 循环依赖： remove方法返回被移除的value，earlyProxyReferences记录的是原始bean
+			 * 	若被循环引用了，那就是执行了上面的`getEarlyBeanReference`方法，所以此时remove返回值肯定是==bean的（注意此时方法入参的bean还是原始对象）
+			 * 	若没有被循环引用，getEarlyBeanReference()不执行 所以remove方法返回null，所以就进入if执行此处的创建代理对象方法~~~
+			 * 	最终的效果：
+			 * 		1、如果earlyProxyReferences没有创建代理对象，就在此处创建代理对象并返回。
+			 * 		2、如果已经创建了代理对象，则直接返回入参Bean（原始对象）
+			 * 	从而确保代理对象只被创建一次
+			 */
 			if (this.earlyProxyReferences.remove(cacheKey) != bean) {
 				return wrapIfNecessary(bean, beanName, cacheKey);
 			}

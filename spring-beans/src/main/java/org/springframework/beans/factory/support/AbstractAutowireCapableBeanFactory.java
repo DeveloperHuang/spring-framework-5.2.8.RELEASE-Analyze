@@ -513,6 +513,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		}
 
 		try {
+			//TODO 循环依赖： 创建bean逻辑
 			Object beanInstance = doCreateBean(beanName, mbdToUse, args);
 			if (logger.isTraceEnabled()) {
 				logger.trace("Finished creating instance of bean '" + beanName + "'");
@@ -553,8 +554,11 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 			instanceWrapper = this.factoryBeanInstanceCache.remove(beanName);
 		}
 		if (instanceWrapper == null) {
+			//TODO 循环依赖： 创建Bean对象，并且将对象包裹在BeanWrapper 中
 			instanceWrapper = createBeanInstance(beanName, mbd, args);
 		}
+		// TODO 循环依赖： 再从Wrapper中获取Bean原始对象（非代理~~~）  这个时候这个Bean就有地址值了，就能被引用了~~~
+		//  注意：此处是原始对象，这点非常的重要
 		Object bean = instanceWrapper.getWrappedInstance();
 		Class<?> beanType = instanceWrapper.getWrappedClass();
 		if (beanType != NullBean.class) {
@@ -575,6 +579,9 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 			}
 		}
 
+		// TODO 循环依赖： earlySingletonExposure 用于表示是否”提前暴露“原始对象的引用，用于解决循环依赖。
+		//  对于单例Bean，该变量一般为 true   但你也可以通过属性allowCircularReferences = false来关闭循环引用
+		//  isSingletonCurrentlyInCreation(beanName) 表示当前bean必须在创建中才行
 		// Eagerly cache singletons to be able to resolve circular references
 		// even when triggered by lifecycle interfaces like BeanFactoryAware.
 		boolean earlySingletonExposure = (mbd.isSingleton() && this.allowCircularReferences &&
@@ -584,13 +591,40 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 				logger.trace("Eagerly caching bean '" + beanName +
 						"' to allow for resolving potential circular references");
 			}
+
+			//  TODO 循环依赖： 如果A和B都是AOP代理，那么A/B 中的成员都应该是动态代理对象
+			//   通过先把当前A设置到三级缓存，
+			//   当下面进行 populateBean(beanName, mbd, A) ，填充属性B时，调用doGetBean(B)
+			//   B就会通过 populateBean(beanName, mbd, B)，从三级缓存获取的A的代理对象，并移动到二级缓存中。
+			//   当B创建完毕后，也会将B的代理对象设置到缓存中，并最终设置到A的属性中
+
+			// TODO 循环依赖： 调用此方法放进一个ObjectFactory，二级缓存会对应删除的
+			//  getEarlyBeanReference的作用：调用SmartInstantiationAwareBeanPostProcessor.getEarlyBeanReference()这个方法  否则啥都不做
+			//  也就是给调用者个机会，自己去实现暴露这个bean的应用的逻辑~~~
+			//  比如在getEarlyBeanReference()里可以实现AOP的逻辑~~~  参考自动代理创建器AbstractAutoProxyCreator  实现了这个方法来创建代理对象
+			//  若不需要执行AOP的逻辑，直接返回Bean
 			addSingletonFactory(beanName, () -> getEarlyBeanReference(beanName, mbd, bean));
 		}
 
 		// Initialize the bean instance.
-		Object exposedObject = bean;
+		Object exposedObject = bean;//exposedObject 是最终返回的对象
 		try {
+			//TODO 循环依赖： 给A@1234属性完成赋值，@Autowired在此处起作用~
+			// 因此此处会调用getBean("b")，so 会重复上面步骤创建B类的实例
+			// 此处我们假设B已经创建好了 为B@5678
+			// 需要注意的是在populateBean("b")的时候依赖有beanA，所以此时候调用getBean("a")最终会调用getSingleton("a")，
+			// 此时候上面说到的 getEarlyBeanReference方法就会被执行。这也解释为何我们@Autowired是个代理对象，而不是普通对象的根本原因
 			populateBean(beanName, mbd, instanceWrapper);
+
+
+			// 实例化。这里会执行后置处理器BeanPostProcessor的两个方法
+			// 当非循环代理时，就直接使用该对象为最终结果。
+			/*
+			 *  TODO 循环依赖：
+			 *   此处注意：postProcessAfterInitialization()是有可能返回一个代理对象的，这样exposedObject 就不再是原始对象了  特备注意哦~~~
+			 *  	比如处理@Aysnc的AsyncAnnotationBeanPostProcessor它就是在这个时间里生成代理对象的（有坑，请小心使用@Aysnc）
+			 *   会导致B中的A对象 和实际的Spring容器中的A对象不是同一个对象。！！！
+			 */
 			exposedObject = initializeBean(beanName, exposedObject, mbd);
 		}
 		catch (Throwable ex) {
@@ -603,20 +637,49 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 			}
 		}
 
+		// TODO 循环依赖： earlySingletonExposure：如果你的bean允许被早期暴露出去 也就是说可以被循环引用  那这里就会进行检查
+		//  此段代码非常重要~~~~~但大多数人都忽略了它
 		if (earlySingletonExposure) {
+			//TODO 循环依赖： 此时一级缓存肯定还没数据，但是呢此时候二级缓存earlySingletonObjects也没数据
+			// 注意，注意：第二参数为false  表示不会再去三级缓存里查了~~~
+			// 我的疑问？ 按理说应该返回null，因为一二级都没有啊
+
+			// 此处非常巧妙的一点：：：因为上面各式各样的实例化、初始化的后置处理器都执行了，如果你在上面执行了这一句
+			//  ((ConfigurableListableBeanFactory)this.beanFactory).registerSingleton(beanName, bean);
+			// 那么此处得到的earlySingletonReference 的引用最终会是你手动放进去的Bean最终返回，完美的实现了"偷天换日" 特别适合中间件的设计
+			// 我们知道，执行完此doCreateBean后执行addSingleton()  其实就是把自己再添加一次  **再一次强调，完美实现偷天换日**
 			Object earlySingletonReference = getSingleton(beanName, false);
+
+			// TODO 循环依赖： 这个意思是如果经过了initializeBean()后，exposedObject还是木有变，那就可以大胆放心的返回了
+			// initializeBean会调用后置处理器，这个时候可以生成一个代理对象，那这个时候它哥俩就不会相等了 走else去判断吧
+
+			// 前面说了因为自己被循环依赖了，所以此时候代理对象还在二级缓存里~~~（备注：本利讲解的是自己被循环依赖了的情况）
+			// so，此处getSingleton，就会把里面的对象拿出来，我们知道此时候它已经是个Proxy代理对象~~~
+			// 最后赋值给exposedObject  然后return出去，进而最终被addSingleton()添加进一级缓存里面去
+			// 这样就保证了我们容器里**最终实际上是代理对象**，而非原始对象~~~~~
 			if (earlySingletonReference != null) {
+				//// 这个判断不可少（因为如果initializeBean改变了exposedObject ，就不能这么玩了，否则就是两个对象了~~~）
 				if (exposedObject == bean) {
 					exposedObject = earlySingletonReference;
 				}
+				// TODO 循环依赖：最后的循环依赖是否成功的校验
+				//  allowRawInjectionDespiteWrapping这个值默认是false
+				//  hasDependentBean：若它有依赖的bean 那就需要继续校验了~~~(若没有依赖的 就放过它~)
 				else if (!this.allowRawInjectionDespiteWrapping && hasDependentBean(beanName)) {
+					// 拿到它所依赖的Bean们~~~~ 下面会遍历一个一个的去看~~
 					String[] dependentBeans = getDependentBeans(beanName);
 					Set<String> actualDependentBeans = new LinkedHashSet<>(dependentBeans.length);
+
+					// 简单的说，它如果判断到该dependentBean并没有在创建中的了的情况下,那就把它从所有缓存中移除~~~  并且返回true
+					// 否则（比如确实在创建中） 那就返回false 进入我们的if里面~  表示所谓的真正依赖
+					//（解释：就是真的需要依赖它先实例化，才能实例化自己的依赖）
 					for (String dependentBean : dependentBeans) {
 						if (!removeSingletonIfCreatedForTypeCheckOnly(dependentBean)) {
 							actualDependentBeans.add(dependentBean);
 						}
 					}
+					// 若存在真正依赖，那就报错（不要等到内存移除你才报错，那是非常不友好的）
+					// 这个异常是BeanCurrentlyInCreationException，报错日志也稍微留意一下，方便定位错误~~~~
 					if (!actualDependentBeans.isEmpty()) {
 						throw new BeanCurrentlyInCreationException(beanName,
 								"Bean with name '" + beanName + "' has been injected into other beans [" +
