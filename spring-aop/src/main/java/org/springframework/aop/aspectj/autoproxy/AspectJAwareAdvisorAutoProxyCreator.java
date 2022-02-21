@@ -38,6 +38,8 @@ import org.springframework.util.ClassUtils;
  * subclass that exposes AspectJ's invocation context and understands AspectJ's rules
  * for advice precedence when multiple pieces of advice come from the same aspect.
  *
+ * 提供对<aop:config>的支持
+ *
  * @author Adrian Colyer
  * @author Juergen Hoeller
  * @author Ramnivas Laddad

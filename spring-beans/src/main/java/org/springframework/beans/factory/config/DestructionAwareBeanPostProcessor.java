@@ -23,7 +23,7 @@ import org.springframework.beans.BeansException;
  *
  * <p>The typical usage will be to invoke custom destruction callbacks on
  * specific bean types, matching corresponding initialization callbacks.
- *
+ * TODO IOC-Bean生命周期：销毁Bean
  * @author Juergen Hoeller
  * @since 1.0.1
  */
@@ -40,6 +40,7 @@ public interface DestructionAwareBeanPostProcessor extends BeanPostProcessor {
 	 * @throws org.springframework.beans.BeansException in case of errors
 	 * @see org.springframework.beans.factory.DisposableBean#destroy()
 	 * @see org.springframework.beans.factory.support.AbstractBeanDefinition#setDestroyMethodName(String)
+	 * TODO IOC-Bean生命周期：销毁后处理回调方法，该回调只能应用到单例Bean
 	 */
 	void postProcessBeforeDestruction(Object bean, String beanName) throws BeansException;
 

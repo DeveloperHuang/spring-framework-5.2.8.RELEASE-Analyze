@@ -55,6 +55,7 @@ import org.springframework.lang.Nullable;
  * @see ConfigurableBeanFactory#addBeanPostProcessor
  * @see BeanFactoryPostProcessor
  */
+//TODO IOC-Bean生命周期： Bean后置处理器
 public interface BeanPostProcessor {
 
 	/**
@@ -67,6 +68,9 @@ public interface BeanPostProcessor {
 	 * @param beanName the name of the bean
 	 * @return the bean instance to use, either the original or a wrapped one;
 	 * if {@code null}, no subsequent BeanPostProcessors will be invoked
+	 *
+	 * TODO IOC-Bean生命周期：实例化、依赖注入完毕后，初始化（init-method、InitializingBean）之前
+	 *
 	 * @throws org.springframework.beans.BeansException in case of errors
 	 * @see org.springframework.beans.factory.InitializingBean#afterPropertiesSet
 	 */
@@ -92,6 +96,8 @@ public interface BeanPostProcessor {
 	 * @param beanName the name of the bean
 	 * @return the bean instance to use, either the original or a wrapped one;
 	 * if {@code null}, no subsequent BeanPostProcessors will be invoked
+	 * TODO IOC-Bean生命周期：初始化（init-method、InitializingBean）之后，
+	 * 	例如：AOP时，{@link AbstractAutoProxyCreator.postProcessAfterInitialization}可以返回代理对象，（循环依赖时返回原对象）
 	 * @throws org.springframework.beans.BeansException in case of errors
 	 * @see org.springframework.beans.factory.InitializingBean#afterPropertiesSet
 	 * @see org.springframework.beans.factory.FactoryBean

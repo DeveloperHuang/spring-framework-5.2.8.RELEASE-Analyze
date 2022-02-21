@@ -43,6 +43,7 @@ import org.springframework.lang.Nullable;
  * @since 1.2
  * @see org.springframework.aop.framework.autoproxy.AbstractAutoProxyCreator#setCustomTargetSourceCreators
  * @see org.springframework.aop.framework.autoproxy.target.LazyInitTargetSourceCreator
+ * TODO IOC-Bean生命周期：实例化Bean
  */
 public interface InstantiationAwareBeanPostProcessor extends BeanPostProcessor {
 
@@ -69,6 +70,14 @@ public interface InstantiationAwareBeanPostProcessor extends BeanPostProcessor {
 	 * @see #postProcessAfterInstantiation
 	 * @see org.springframework.beans.factory.support.AbstractBeanDefinition#getBeanClass()
 	 * @see org.springframework.beans.factory.support.AbstractBeanDefinition#getFactoryMethodName()
+	 *
+	 * TODO IOC-Bean生命周期：实例化之前执行。给调用者一个机会，返回一个代理对象（相当于可以摆脱Spring的束缚，可以自定义实例化逻辑）
+	 *  若返回null，继续后续Spring的逻辑。
+	 *  若返回不为null，就最后面都仅仅只执行 BeanPostProcessor #postProcessAfterInitialization这一个回调方法了。
+	 *  如：1. 当AbstractAutoProxyCreator的实现者注册了TargetSourceCreator（创建自定义的TargetSource）将会按照这个流程去执行。
+	 *  绝大多数情况下调用者不会自己去实现TargetSourceCreator，而是Spring采用默认的SingletonTargetSource去生产AOP对象。
+	 *  当然除了SingletonTargetSource，我们还可以使用ThreadLocalTargetSource（线程绑定的Bean）、
+	 *  CommonsPoolTargetSource（实例池的Bean）等等
 	 */
 	@Nullable
 	default Object postProcessBeforeInstantiation(Class<?> beanClass, String beanName) throws BeansException {
@@ -89,6 +98,11 @@ public interface InstantiationAwareBeanPostProcessor extends BeanPostProcessor {
 	 * instances being invoked on this bean instance.
 	 * @throws org.springframework.beans.BeansException in case of errors
 	 * @see #postProcessBeforeInstantiation
+	 * TODO IOC-Bean生命周期：实例化完毕后、初始化之前执行。
+	 *  若方法返回false，表示后续的InstantiationAwareBeanPostProcessor都不用再执行了。(一般不建议去返回false，
+	 *  它的意义在于若返回fasle不仅后续的不执行了，就连自己个的且包括后续的处理器的postProcessPropertyValues方法都将不会再执行了）
+	 *  {@link AbstractAutowireCapableBeanFactory#populateBean()}的时候调用，若有返回false，
+	 *  下面的postProcessPropertyValues、postProcessProperties就都不会调用了
 	 */
 	default boolean postProcessAfterInstantiation(Object bean, String beanName) throws BeansException {
 		return true;
@@ -111,6 +125,7 @@ public interface InstantiationAwareBeanPostProcessor extends BeanPostProcessor {
 	 * @throws org.springframework.beans.BeansException in case of errors
 	 * @since 5.1
 	 * @see #postProcessPropertyValues
+	 *
 	 */
 	@Nullable
 	default PropertyValues postProcessProperties(PropertyValues pvs, Object bean, String beanName)
@@ -138,6 +153,12 @@ public interface InstantiationAwareBeanPostProcessor extends BeanPostProcessor {
 	 * @see #postProcessProperties
 	 * @see org.springframework.beans.MutablePropertyValues
 	 * @deprecated as of 5.1, in favor of {@link #postProcessProperties(PropertyValues, Object, String)}
+	 *
+	 * TODO IOC-Bean生命周期：紧接着上面postProcessAfterInitialization执行的（false解释如上）。如：
+	 *  1. AutowiredAnnotationBeanPostProcessor执行@Autowired注解注入
+	 *  2. CommonAnnotationBeanPostProcessor执行@Resource等注解的注入，
+	 *  3. PersistenceAnnotationBeanPostProcessor执行@ PersistenceContext等JPA注解的注入，
+	 *  4. RequiredAnnotationBeanPostProcessor执行@ Required注解的检查等等
 	 */
 	@Deprecated
 	@Nullable

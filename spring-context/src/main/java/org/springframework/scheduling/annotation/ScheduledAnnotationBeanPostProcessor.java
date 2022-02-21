@@ -90,6 +90,8 @@ import org.springframework.util.StringValueResolver;
  * control over task registration (e.g. registration of {@link Trigger} tasks.
  * See the @{@link EnableScheduling} javadocs for complete usage details.
  *
+ * TODO IOC-Bean生命周期：当配置文件中有task:annotation-driven自动注册或@EnableScheduling自动注册。（提供对注解@Scheduled任务调度的支持）
+ *
  * @author Mark Fisher
  * @author Juergen Hoeller
  * @author Chris Beams

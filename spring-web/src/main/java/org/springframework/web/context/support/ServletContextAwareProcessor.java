@@ -33,6 +33,8 @@ import org.springframework.web.context.ServletContextAware;
  * <p>Web application contexts will automatically register this with their
  * underlying bean factory. Applications do not use this directly.
  *
+ * TODO IOC-Bean生命周期：当你的Bean 实现了ServletContextAware/ServletConfigAware
+ * 	会自动调用回调方法注入ServletContext/ ServletConfig。
  * @author Juergen Hoeller
  * @author Phillip Webb
  * @since 12.03.2004

@@ -34,6 +34,7 @@ import org.springframework.lang.Nullable;
  * @author Juergen Hoeller
  * @since 2.0.3
  * @see InstantiationAwareBeanPostProcessorAdapter
+ * TODO IOC-Bean生命周期：智能实例化Bean
  */
 public interface SmartInstantiationAwareBeanPostProcessor extends InstantiationAwareBeanPostProcessor {
 
@@ -45,6 +46,16 @@ public interface SmartInstantiationAwareBeanPostProcessor extends InstantiationA
 	 * @param beanName the name of the bean
 	 * @return the type of the bean, or {@code null} if not predictable
 	 * @throws org.springframework.beans.BeansException in case of errors
+	 * TODO IOC-Bean生命周期：预测Bean的类型，返回第一个预测成功的Class类型，如果不能预测返回null；
+	 *  当你调用BeanFactory.getType(name)时当通过Bean定义无法得到Bean类型信息时就调用该回调方法来决定类型信息。
+	 *  方法：getBeanNamesForType(,)会循环调用此方法~~ 如下：
+	 *  1、BeanFactory.isTypeMatch(name, targetType)
+	 *  2、determineCandidateConstructors：检测Bean的构造器，可以检测出多个候选构造器，再有相应的策略决定使用哪一个。
+	 *  3、getEarlyBeanReference：和循环引用相关了，AspectJAwareAdvisorAutoProxyCreator
+	 *  	或AnnotationAwareAspectJAutoProxyCreator他们都有调用此方法，
+	 *  	通过early reference能得到正确的代理对象。
+	 *  	有个小细节：这两个类中若执行了getEarlyBeanReference，那postProcessAfterInitialization就不会再执行了。
+	 *
 	 */
 	@Nullable
 	default Class<?> predictBeanType(Class<?> beanClass, String beanName) throws BeansException {

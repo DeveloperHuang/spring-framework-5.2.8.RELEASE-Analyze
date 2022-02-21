@@ -58,6 +58,8 @@ import org.springframework.util.StringValueResolver;
  * @see org.springframework.context.MessageSourceAware
  * @see org.springframework.context.ApplicationContextAware
  * @see org.springframework.context.support.AbstractApplicationContext#refresh()
+ * TODO IOC-Bean生命周期：ApplicationContextAware处理器，如果bean实现了对应的aware接口，调用对应的回调方法。
+ *  包含的aware接口如上 @see注解中的标识所示
  */
 class ApplicationContextAwareProcessor implements BeanPostProcessor {
 
