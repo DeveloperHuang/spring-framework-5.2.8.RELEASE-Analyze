@@ -69,6 +69,12 @@ public interface SmartInstantiationAwareBeanPostProcessor extends InstantiationA
 	 * @param beanName the name of the bean
 	 * @return the candidate constructors, or {@code null} if none specified
 	 * @throws org.springframework.beans.BeansException in case of errors
+	 *
+	 * TODO IOC-Bean生命周期：检测Bean的构造器，可以检测出多个候选构造器，再有相应的策略决定使用哪一个。
+	 *  在createBeanInstance的时候，会通过此方法尝试去找到一个合适的构造函数。
+	 *  若返回null，可能就直接使用空构造函数去实例化了 如：
+	 *  1. AutowiredAnnotationBeanPostProcessor：它会扫描Bean中使用了@Autowired/@Value注解的构造器从而可以完成构造器注入
+	 *
 	 */
 	@Nullable
 	default Constructor<?>[] determineCandidateConstructors(Class<?> beanClass, String beanName)
@@ -97,6 +103,13 @@ public interface SmartInstantiationAwareBeanPostProcessor extends InstantiationA
 	 * @return the object to expose as bean reference
 	 * (typically with the passed-in bean instance as default)
 	 * @throws org.springframework.beans.BeansException in case of errors
+	 *
+	 * TODO IOC-Bean生命周期：getEarlyBeanReference：和循环引用相关了。
+	 *  当正在创建A时，A依赖B。此时会：将A作为ObjectFactory放入单例工厂中进行early expose，
+	 *  此处又需要引用A，但A正在创建，从单例工厂拿到ObjectFactory**（其通过getEarlyBeanReference获取及早暴露Bean)**从而允许循环依赖。
+	 *  1. AspectJAwareAdvisorAutoProxyCreator或AnnotationAwareAspectJAutoProxyCreator他们都有调用此方法，通过early reference能得到正确的代理对象。
+	 *  有个小细节：这两个类中若执行了getEarlyBeanReference，那postProcessAfterInitialization就不会再执行了。
+	 *
 	 */
 	default Object getEarlyBeanReference(Object bean, String beanName) throws BeansException {
 		return bean;
