@@ -502,6 +502,9 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 
 		try {
 			// Give BeanPostProcessors a chance to return a proxy instead of the target bean instance.
+			/**
+				TODO IOC-Bean生命周期：循环调用 {@link InstantiationAwareBeanPostProcessor#postProcessBeforeInstantiation}
+			 */
 			Object bean = resolveBeforeInstantiation(beanName, mbdToUse);
 			if (bean != null) {
 				return bean;
@@ -513,7 +516,19 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		}
 
 		try {
-			//TODO 循环依赖： 创建bean逻辑
+			/**
+			 TODO IOC-Bean生命周期：顺序如下
+			 		0、如上，调用postProcessBeforeInstantiation
+				 	1、Bean实例化
+			 		以下两个见 {@link #populateBean}
+			 		2、{@link InstantiationAwareBeanPostProcessor#postProcessAfterInstantiation}
+			 		3、属性赋值
+			 		以下四个为初始化步骤，见 {@link #initializeBean(String, Object, RootBeanDefinition)}
+			 		4、invokeAwareMethods （Aware接口）
+			 		5、{@link BeanPostProcessor#postProcessBeforeInitialization}
+			 		6、invokeInitMethods  {@link InitializingBean#afterPropertiesSet()} 接口和init-methods方法
+			 		7、{@link BeanPostProcessor#postProcessAfterInitialization}
+			 */
 			Object beanInstance = doCreateBean(beanName, mbdToUse, args);
 			if (logger.isTraceEnabled()) {
 				logger.trace("Finished creating instance of bean '" + beanName + "'");
@@ -554,7 +569,10 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 			instanceWrapper = this.factoryBeanInstanceCache.remove(beanName);
 		}
 		if (instanceWrapper == null) {
-			//TODO 循环依赖： 创建Bean对象，并且将对象包裹在BeanWrapper 中
+			/*
+				TODO IOC-Bean生命周期：实例化阶段
+				TODO 循环依赖： 创建Bean对象，并且将对象包裹在BeanWrapper 中
+			*/
 			instanceWrapper = createBeanInstance(beanName, mbd, args);
 		}
 		// TODO 循环依赖： 再从Wrapper中获取Bean原始对象（非代理~~~）  这个时候这个Bean就有地址值了，就能被引用了~~~
@@ -609,17 +627,21 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		// Initialize the bean instance.
 		Object exposedObject = bean;//exposedObject 是最终返回的对象
 		try {
-			//TODO 循环依赖： 给A@1234属性完成赋值，@Autowired在此处起作用~
-			// 因此此处会调用getBean("b")，so 会重复上面步骤创建B类的实例
-			// 此处我们假设B已经创建好了 为B@5678
-			// 需要注意的是在populateBean("b")的时候依赖有beanA，所以此时候调用getBean("a")最终会调用getSingleton("a")，
-			// 此时候上面说到的 getEarlyBeanReference方法就会被执行。这也解释为何我们@Autowired是个代理对象，而不是普通对象的根本原因
+			/*
+				TODO IOC-Bean生命周期：属性赋值阶段
+				TODO 循环依赖： 给A@1234属性完成赋值，@Autowired在此处起作用~
+				 因此此处会调用getBean("b")，so 会重复上面步骤创建B类的实例
+				 此处我们假设B已经创建好了 为B@5678
+				 需要注意的是在populateBean("b")的时候依赖有beanA，所以此时候调用getBean("a")最终会调用getSingleton("a")，
+				 此时候上面说到的 getEarlyBeanReference方法就会被执行。这也解释为何我们@Autowired是个代理对象，而不是普通对象的根本原因
+			*/
 			populateBean(beanName, mbd, instanceWrapper);
 
 
 			// 实例化。这里会执行后置处理器BeanPostProcessor的两个方法
 			// 当非循环代理时，就直接使用该对象为最终结果。
-			/*
+			/**
+			 *	TODO IOC-Bean生命周期：初始化阶段
 			 *  TODO 循环依赖：
 			 *   此处注意：postProcessAfterInitialization()是有可能返回一个代理对象的，这样exposedObject 就不再是原始对象了  特备注意哦~~~
 			 *  	比如处理@Aysnc的AsyncAnnotationBeanPostProcessor它就是在这个时间里生成代理对象的（有坑，请小心使用@Aysnc）
@@ -1174,6 +1196,10 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 				Class<?> targetType = determineTargetType(beanName, mbd);
 				if (targetType != null) {
 					bean = applyBeanPostProcessorsBeforeInstantiation(targetType, beanName);
+					/*
+						如果实例化之前就返回了对象，该对象认为是代理对象，已完成实例化
+						且脱离Spring管理，因此直接调用后续的AfterInitialization，
+					 */
 					if (bean != null) {
 						bean = applyBeanPostProcessorsAfterInitialization(bean, beanName);
 					}
@@ -1212,6 +1238,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 	/**
 	 * Create a new instance for the specified bean, using an appropriate instantiation strategy:
 	 * factory method, constructor autowiring, or simple instantiation.
+	 * TODO IOC-Bean生命周期： 实例化阶段
 	 * @param beanName the name of the bean
 	 * @param mbd the bean definition for the bean
 	 * @param args explicit arguments to use for constructor or factory method invocation

@@ -18,8 +18,10 @@ package org.springframework.beans.factory.config;
 
 import java.beans.PropertyDescriptor;
 
+import org.springframework.beans.BeanWrapper;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.PropertyValues;
+import org.springframework.beans.factory.support.RootBeanDefinition;
 import org.springframework.lang.Nullable;
 
 /**
@@ -78,6 +80,8 @@ public interface InstantiationAwareBeanPostProcessor extends BeanPostProcessor {
 	 *  绝大多数情况下调用者不会自己去实现TargetSourceCreator，而是Spring采用默认的SingletonTargetSource去生产AOP对象。
 	 *  当然除了SingletonTargetSource，我们还可以使用ThreadLocalTargetSource（线程绑定的Bean）、
 	 *  CommonsPoolTargetSource（实例池的Bean）等等
+	 * 示例
+	 *  @see org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory#applyBeanPostProcessorsBeforeInitialization(Object, String)
 	 */
 	@Nullable
 	default Object postProcessBeforeInstantiation(Class<?> beanClass, String beanName) throws BeansException {
@@ -101,8 +105,9 @@ public interface InstantiationAwareBeanPostProcessor extends BeanPostProcessor {
 	 * TODO IOC-Bean生命周期：实例化完毕后、初始化之前执行。
 	 *  若方法返回false，表示后续的InstantiationAwareBeanPostProcessor都不用再执行了。(一般不建议去返回false，
 	 *  它的意义在于若返回fasle不仅后续的不执行了，就连自己个的且包括后续的处理器的postProcessPropertyValues方法都将不会再执行了）
-	 *  {@link AbstractAutowireCapableBeanFactory#populateBean()}的时候调用，若有返回false，
-	 *  下面的postProcessPropertyValues、postProcessProperties就都不会调用了
+	 *  如下链接所示
+	 *  {@link org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory#populateBean(String, RootBeanDefinition, BeanWrapper)}
+	 *
 	 */
 	default boolean postProcessAfterInstantiation(Object bean, String beanName) throws BeansException {
 		return true;

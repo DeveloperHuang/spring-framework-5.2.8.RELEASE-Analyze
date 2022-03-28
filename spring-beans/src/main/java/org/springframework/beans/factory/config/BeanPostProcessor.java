@@ -67,7 +67,7 @@ public interface BeanPostProcessor {
 	 * @param bean the new bean instance
 	 * @param beanName the name of the bean
 	 * @return the bean instance to use, either the original or a wrapped one;
-	 * if {@code null}, no subsequent BeanPostProcessors will be invoked
+	 * if {@code null}, no subsequent BeanPostProcessors will be invoked（后续的BeanPostProcessors实现类不会再被调用，因为已经被代理）
 	 *
 	 * TODO IOC-Bean生命周期：实例化、依赖注入完毕后，初始化（init-method、InitializingBean）之前
 	 *
@@ -97,7 +97,8 @@ public interface BeanPostProcessor {
 	 * @return the bean instance to use, either the original or a wrapped one;
 	 * if {@code null}, no subsequent BeanPostProcessors will be invoked
 	 * TODO IOC-Bean生命周期：初始化（init-method、InitializingBean）之后，
-	 * 	例如：AOP时，{@link AbstractAutoProxyCreator.postProcessAfterInitialization}可以返回代理对象，（循环依赖时返回原对象）
+	 * 	例如：动态代理创建时，如果因为循环依赖提前创建了代理对象，则自动返回已代理的对象，不再重新创建新的代理对象。从而解决循环依赖问题
+	 * 	{@link org.springframework.aop.framework.autoproxy.AbstractAutoProxyCreator#postProcessAfterInitialization}
 	 * @throws org.springframework.beans.BeansException in case of errors
 	 * @see org.springframework.beans.factory.InitializingBean#afterPropertiesSet
 	 * @see org.springframework.beans.factory.FactoryBean
