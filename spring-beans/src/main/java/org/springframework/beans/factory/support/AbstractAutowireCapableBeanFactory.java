@@ -173,6 +173,14 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 	 */
 	public AbstractAutowireCapableBeanFactory() {
 		super();
+		/**
+		 * TODO IOC-容器启动流程：创建BeanFactory构造器
+		 * 这里是重点。忽略自动装配。这里指定的都是接口。什么意思呢？
+		 * ignoreDependencyInterface的真正意思是在自动装配时忽略指定接口的实现类中，对外的依赖。（这里面注意：@Autowired和它的关系，其实是有坑的，后续会专门讲解这个坑）
+		 * 自动装配忽略以下三个的目的，是会通过其他方式解析并注入对应的依赖。如下所示
+		 * 	BeanFactory通过 BeanFactoryAware注入
+		 * 	ApplicationContext通过ApplicationContextAware注入
+		 */
 		ignoreDependencyInterface(BeanNameAware.class);
 		ignoreDependencyInterface(BeanFactoryAware.class);
 		ignoreDependencyInterface(BeanClassLoaderAware.class);

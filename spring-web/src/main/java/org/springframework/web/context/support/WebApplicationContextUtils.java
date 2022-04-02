@@ -17,6 +17,7 @@
 package org.springframework.web.context.support;
 
 import java.io.Serializable;
+import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -324,6 +325,12 @@ public abstract class WebApplicationContextUtils {
 	@SuppressWarnings("serial")
 	private static class RequestObjectFactory implements ObjectFactory<ServletRequest>, Serializable {
 
+		/**
+		 * TODO IOC-ServlertRequest：将Request Bean注入RequestObjectFactory为工厂对象
+		 * 	每次调用request的方法时，调用getObject方法获取到当前的线程对象的Request对象，
+		 * 	最后通过反射调用request对应的方法，如下所示
+		 * @see org.springframework.beans.factory.support.AutowireUtils.ObjectFactoryDelegatingInvocationHandler#invoke(Object, Method, Object[])
+		 */
 		@Override
 		public ServletRequest getObject() {
 			return currentRequestAttributes().getRequest();

@@ -116,17 +116,34 @@ public abstract class AbstractRefreshableApplicationContext extends AbstractAppl
 	 * This implementation performs an actual refresh of this context's underlying
 	 * bean factory, shutting down the previous bean factory (if any) and
 	 * initializing a fresh bean factory for the next phase of the context's lifecycle.
+	 *
+	 * TODO IOC-容器启动流程：刷新Bean工厂
+	 * 	销毁原工厂，创建DefaultListableBeanFactory实例，解析配置文件，注册Bean的定义信息
 	 */
 	@Override
 	protected final void refreshBeanFactory() throws BeansException {
+		//避免重复加载
 		if (hasBeanFactory()) {
 			destroyBeans();
 			closeBeanFactory();
 		}
 		try {
+			// 创建具体的beanFactory，这里创建的是DefaultListableBeanFactory，最重要的beanFactory spring注册及加载bean就靠它
 			DefaultListableBeanFactory beanFactory = createBeanFactory();
 			beanFactory.setSerializationId(getId());
+
+			/**
+			 * 这句比较简单，就是把当前旧容器的一些配置值复制给新容器
+			 * allowBeanDefinitionOverriding属性是指是否允对一个名字相同但definition不同进行重新注册，默认是true。
+			 * allowCircularReferences属性是指是否允许Bean之间循环引用，默认是true.
+			 * 这两个属性值初始值为空：复写此方法即可customizeBeanFactory
+			 */
 			customizeBeanFactory(beanFactory);
+			/**
+			 * 解析配置文件，注册Bean的定义信息 (属于模版方法，由子类去实现加载的方式)，如下两个实现所示
+			 * {@link org.springframework.web.context.support.AnnotationConfigWebApplicationContext#loadBeanDefinitions}
+			 * {@link AbstractXmlApplicationContext#loadBeanDefinitions(DefaultListableBeanFactory)}
+			 */
 			loadBeanDefinitions(beanFactory);
 			this.beanFactory = beanFactory;
 		}
@@ -194,6 +211,9 @@ public abstract class AbstractRefreshableApplicationContext extends AbstractAppl
 	 * @see org.springframework.beans.factory.support.DefaultListableBeanFactory#setAllowRawInjectionDespiteWrapping
 	 */
 	protected DefaultListableBeanFactory createBeanFactory() {
+		// 创建的时候就是new了一个工厂：DefaultListableBeanFactory
+		// 这个时候工厂里面所有东西都是默认值，很多还没有完成初始化属性的设置呢
+		// getInternalParentBeanFactory 尝试返回父的的BeanFactory
 		return new DefaultListableBeanFactory(getInternalParentBeanFactory());
 	}
 
